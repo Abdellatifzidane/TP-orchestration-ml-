@@ -61,7 +61,8 @@ le categoriel).
 ├── src/                  modules baseline (lances via PYTHONPATH=src)
 │   ├── config.py         configuration (dataset, cible, features)
 │   ├── data.py           chargement + split train/test
-│   └── features.py       feature engineering + pre-processing (scaler + one-hot)
+│   ├── features.py       feature engineering + pre-processing (scaler + one-hot)
+│   └── train.py          entrainement de la baseline LogisticRegression
 └── tests/                tests pytest
 ```
 
@@ -71,10 +72,22 @@ L'environnement est gere par [`uv`](https://docs.astral.sh/uv/) (Python 3.13).
 
 ```bash
 make install     # cree .venv + installe les dependances
-make test        # verifie config + features (pytest)
+make train       # entraine la baseline -> models/model.joblib
 ```
 
-Exemple d'utilisation des briques baseline (`PYTHONPATH=src`) :
+Sortie attendue (ordre de grandeur) :
+
+```
+f1=0.000  roc_auc=0.707
+```
+
+Le `roc_auc > 0.5` confirme que la baseline ordonne correctement les demandeurs.
+Le `f1 = 0` vient du desequilibre des classes (11 % de `1`) : au seuil 0.5, la
+regression logistique non ponderee predit surtout la classe majoritaire. La
+gestion du desequilibre (`class_weight`, seuil, re-echantillonnage) et le suivi
+MLflow seront ajoutes au fil des seances.
+
+Les briques sont aussi utilisables directement (`PYTHONPATH=src`) :
 
 ```python
 from data import load_data, split
@@ -82,12 +95,8 @@ from features import build_preprocessor
 
 df = load_data()
 x_train, x_test, y_train, y_test = split(df)
-pre = build_preprocessor()        # a brancher sur un estimateur (TP suivants)
+pre = build_preprocessor()
 ```
-
-> Les briques `config`/`data`/`features` constituent la baseline. L'entrainement
-> du modele, le suivi MLflow, l'API et l'orchestration seront ajoutes au fil des
-> seances.
 
 ## Qualite
 

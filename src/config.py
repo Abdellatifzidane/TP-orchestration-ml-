@@ -16,6 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 # Jeu de donnees prepare (fusion des CSV Kaggle + nettoyage).
 DATA_PATH = ROOT / "data" / "dataset.csv"
 
+# Dossier de sortie des modeles entraines.
+MODEL_DIR = ROOT / "models"
+
 # Colonne cible binaire : 1 = demande acceptee, 0 = refusee.
 TARGET = "target"
 
