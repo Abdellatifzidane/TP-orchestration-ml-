@@ -1,75 +1,97 @@
-# MLOps IABD (ESGI) : supports de cours et projet etudiant
+# MLOps - Acceptation de demande de carte de credit
 
-Ce depot regroupe les supports de cours (slides) et le squelette du projet fil
-rouge a completer (`todo/`) du module d'orchestration Machine Learning.
+Projet fil rouge du module d'orchestration Machine Learning (ESGI). On construit,
+au fil des seances, un pipeline MLOps complet (entrainement, suivi d'experiences,
+API, frontend, orchestration) autour d'un probleme de **classification binaire**.
 
-## Contexte
+## La problematique : un probleme de classification
 
-Le cours s'appuie sur un cas d'usage de classification binaire tabulaire. En
-cours, la demonstration se fait sur la prediction de churn client ; de votre
-cote, vous adaptez le squelette `todo/` a **votre propre** probleme de
-classification binaire (voir `todo/README.md`).
+On cherche a predire, pour un demandeur, si sa **demande de carte de credit sera
+acceptee (`1`) ou refusee (`0`)** a partir de ses caracteristiques personnelles et
+financieres (revenu, situation familiale, emploi, logement...).
 
-Chaque seance est un TP ou l'on complete des marqueurs `TODO (Sx-n)` dans un
-code de depart deja fonctionnel.
+> En une phrase : les `1` sont les demandes **acceptees**, les `0` les demandes
+> **refusees** ; predire cette cible aide un etablissement a automatiser et
+> fiabiliser sa decision d'octroi tout en limitant le risque.
 
-## Plan des seances
+Pourquoi c'est de la **classification** (et non de la regression) : la cible n'est
+pas une quantite continue mais une **etiquette a deux valeurs**. Le modele apprend
+une frontiere de decision a partir d'exemples passes, puis attribue a chaque
+nouveau demandeur une **probabilite d'appartenir a la classe 1**, convertie en
+decision via un seuil (0,5 par defaut).
 
-Le cours est organise en 5 modules sur 20 seances (un fichier `Sx_*.pptx` par
-seance, dans `slides/`).
+### Un jeu de donnees desequilibre
 
-- Module 1 : Fondations (S1 a S3) : intro MLOps, mise en place de
-  l'environnement, baseline du fil rouge.
-- Module 2 : Entrainement (S4 a S7) : reproductibilite/validation, MLflow
-  Tracking, Optuna + Model Registry, AutoML & SHAP.
-- Module 3 : Conteneurisation & qualite (S8 a S11) : Docker, conteneurisation
-  de l'entrainement, pytest, tests donnees/modele (QCM intermediaire en S11).
-- Module 4 : Deploiement API (S12 a S15) : FastAPI, API ML reliee au registry,
-  conteneurisation + docker-compose, tests d'API.
-- Module 5 : Orchestration & CI/CD (S16 a S19) : concepts + Airflow, DAG de
-  re-entrainement, GitHub Actions CI puis CD.
-- Cloture (S20) : bonus deploiement AWS (ECR + App Runner/Lambda) et prepa
-  soutenance.
+La classe positive est minoritaire : **11,3 % de `1`** pour **88,7 % de `0`**
+(175 acceptations sur 1 548). Consequence :
 
-## Stack technique
+- l'**accuracy** est trompeuse (predire toujours `0` donne deja ~89 %) ;
+- on suit en priorite le **ROC AUC** et le **F1** de la classe positive ;
+- piste d'amelioration prevue : `class_weight="balanced"` / reechantillonnage.
 
-- Python 3.13 (environnement gere par uv)
-- MLflow (tracking + registry) via docker compose
-- FastAPI + uvicorn pour servir le modele
-- Airflow pour l'orchestration du re-entrainement
-- Docker + docker-compose pour tous les services
-- GitHub Actions pour l'integration continue
+## Le jeu de donnees
 
-## Arborescence
+Source : [Kaggle - Credit Card Details](https://www.kaggle.com/datasets/rohitudageri/credit-card-details)
+
+Deux fichiers bruts, joints sur `Ind_ID`, places dans `data/` :
+
+| Fichier                       | Contenu                                            |
+|-------------------------------|----------------------------------------------------|
+| `data/Credit_card.csv`        | 1 548 demandeurs x 18 colonnes de caracteristiques |
+| `data/Credit_card_label.csv`  | `Ind_ID` + `label` (0/1)                           |
+
+- **Cible** : `target` (renommee depuis `label`), binaire 0/1.
+- **Numeriques** (8) : `CHILDREN`, `Annual_income`, `Birthday_count`,
+  `Employed_days`, `Work_Phone`, `Phone`, `EMAIL_ID`, `Family_Members`.
+- **Categorielles** (8) : `GENDER`, `Car_Owner`, `Propert_Owner`, `Type_Income`,
+  `EDUCATION`, `Marital_status`, `Housing_type`, `Type_Occupation`.
+
+`python -m churn.prepare_data` fusionne les deux CSV, renomme `label` -> `target`,
+supprime `Ind_ID` et `Mobile_phone` (constant), impute les manquants (mediane pour
+le numerique, `Unknown` pour le categoriel) et ecrit `data/dataset.csv`.
+
+## Structure du projet
 
 ```
-mlops-iabd-esgi/
-  README.md                 ce fichier
-  .gitignore                exclusions (secrets, caches, artefacts ML)
-  slides/                   supports de cours (un .pptx par seance) + syllabus
-  tp/                       enonces des TP (un .md par seance, marqueurs TODO)
-  todo/                     squelette du projet a completer (package mlproject)
-    README.md               demarche pedagogique et feuille de route detaillee
-    Makefile                cibles d'installation (uv), les autres a completer
-    mlproject/              code source a completer (config, train, api...)
-    frontend/               squelette frontend Streamlit
-    docker/                 Dockerfiles (train a completer, api/frontend fournis)
-    docker-compose.yml      squelette d'orchestration
-    dags/                   squelette DAG Airflow de re-entrainement
+.
+├── pyproject.toml        dependances + outils (uv, ruff, mypy, pytest)
+├── Makefile              commandes du projet (make help)
+├── data/                 CSV bruts + dataset.csv prepare
+├── churn/                package du projet
+│   ├── config.py         configuration (dataset, cible, features)
+│   ├── prepare_data.py   preparation des donnees -> data/dataset.csv
+│   ├── data.py           chargement + split train/test
+│   ├── features.py       pre-processing (StandardScaler + OneHotEncoder)
+│   └── train.py          entrainement de la baseline LogisticRegression
+└── tests/                tests pytest
 ```
 
 ## Mise en route
 
-```bash
-make -C todo install        # installe les dependances (uv)
-export PYTHONPATH=todo       # rend le package mlproject importable
-```
-
-Adaptez ensuite `todo/mlproject/config.py` a votre dataset, puis verifiez :
+L'environnement est gere par [`uv`](https://docs.astral.sh/uv/) (Python 3.13).
 
 ```bash
-PYTHONPATH=todo python -m mlproject.train   # doit afficher f1=... roc_auc=...
+make install     # cree .venv + installe le projet et les dependances
+make data        # prepare data/dataset.csv (fusion + nettoyage des CSV Kaggle)
+make train       # entraine / evalue la baseline -> models/model.joblib
 ```
 
-La demarche complete, la feuille de route des exercices et les consignes de
-suivi GitHub sont detaillees dans `todo/README.md`.
+Sortie attendue (ordre de grandeur) :
+
+```
+f1=0.056  roc_auc=0.649
+```
+
+Le `roc_auc > 0.5` confirme que la baseline fait mieux que le hasard ; le `f1`
+faible reflete le desequilibre des classes. C'est le point de depart que les
+seances suivantes (MLflow, Optuna, comparaison de modeles, API, orchestration...)
+viendront enrichir.
+
+## Qualite
+
+```bash
+make lint        # ruff
+make type        # mypy
+make test        # pytest
+make check       # les trois
+```

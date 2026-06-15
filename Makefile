@@ -1,0 +1,77 @@
+# ==============================================================================
+# Projet fil rouge MLOps - classification (acceptation de carte de credit)
+# Environnement gere par uv (Python 3.13) a partir de pyproject.toml.
+# Aide : make help
+# ==============================================================================
+
+SHELL        := /bin/sh
+PYTHON       := uv run python
+RUN          := uv run
+API_HOST     ?= 127.0.0.1
+API_PORT     ?= 8000
+FRONTEND_PORT ?= 8501
+C            ?= 1.0
+MAX_ITER     ?= 1000
+
+YELLOW := $(shell printf '\033[33m')
+GREEN  := $(shell printf '\033[32m')
+RED    := $(shell printf '\033[31m')
+CYAN   := $(shell printf '\033[36m')
+RESET  := $(shell printf '\033[0m')
+
+.DEFAULT_GOAL := help
+
+.PHONY: help check-uv install sync lock data train \
+        lint format type test check
+
+help: ## Liste des commandes disponibles
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(CYAN)%-14s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# ------------------------------------------------------------------------------
+# Environnement
+# ------------------------------------------------------------------------------
+
+check-uv:
+	@command -v uv >/dev/null 2>&1 || { \
+		echo "$(RED)[ERREUR] uv n'est pas installe$(RESET)"; \
+		echo "  Installation : https://docs.astral.sh/uv/"; \
+		exit 1; \
+	}
+
+install: check-uv ## Cree le venv et installe le projet + dependances dev
+	@echo "$(YELLOW)>> Synchronisation des dependances...$(RESET)"
+	uv sync --extra dev
+	@echo "$(GREEN)[OK] Dependances installees$(RESET)"
+
+sync: install ## Alias de install
+
+lock: check-uv ## Genere/actualise uv.lock depuis pyproject.toml
+	uv lock
+
+# ------------------------------------------------------------------------------
+# Pipeline ML
+# ------------------------------------------------------------------------------
+
+data: ## Prepare data/dataset.csv (fusion + nettoyage des CSV Kaggle)
+	$(PYTHON) -m churn.prepare_data
+
+train: ## Entraine la baseline -> models/model.joblib (C=.. MAX_ITER=..)
+	$(PYTHON) -m churn.train --c $(C) --max-iter $(MAX_ITER)
+
+# ------------------------------------------------------------------------------
+# Qualite
+# ------------------------------------------------------------------------------
+
+lint: ## Verifie le style (ruff)
+	$(RUN) ruff check churn tests
+
+format: ## Formate le code (ruff)
+	$(RUN) ruff format churn tests
+
+type: ## Verifie les types (mypy)
+	$(RUN) mypy churn
+
+test: ## Lance les tests (pytest)
+	$(RUN) pytest
+
+check: lint type test ## Workflow qualite complet (lint + types + tests)
