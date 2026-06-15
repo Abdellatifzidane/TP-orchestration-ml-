@@ -46,9 +46,10 @@ Deux fichiers bruts, joints sur `Ind_ID`, places dans `data/` :
 - **Categorielles** (8) : `GENDER`, `Car_Owner`, `Propert_Owner`, `Type_Income`,
   `EDUCATION`, `Marital_status`, `Housing_type`, `Type_Occupation`.
 
-`python -m churn.prepare_data` fusionne les deux CSV, renomme `label` -> `target`,
-supprime `Ind_ID` et `Mobile_phone` (constant), impute les manquants (mediane pour
-le numerique, `Unknown` pour le categoriel) et ecrit `data/dataset.csv`.
+`data/dataset.csv` est issu de la fusion des deux CSV (jointure sur `Ind_ID`),
+avec `label` renomme en `target`, suppression de `Ind_ID` et `Mobile_phone`
+(constant) et imputation des manquants (mediane pour le numerique, `Unknown` pour
+le categoriel).
 
 ## Structure du projet
 
@@ -57,12 +58,10 @@ le numerique, `Unknown` pour le categoriel) et ecrit `data/dataset.csv`.
 ├── pyproject.toml        dependances + outils (uv, ruff, mypy, pytest)
 ├── Makefile              commandes du projet (make help)
 ├── data/                 CSV bruts + dataset.csv prepare
-├── churn/                package du projet
+├── src/                  modules baseline (lances via PYTHONPATH=src)
 │   ├── config.py         configuration (dataset, cible, features)
-│   ├── prepare_data.py   preparation des donnees -> data/dataset.csv
 │   ├── data.py           chargement + split train/test
-│   ├── features.py       pre-processing (StandardScaler + OneHotEncoder)
-│   └── train.py          entrainement de la baseline LogisticRegression
+│   └── features.py       feature engineering + pre-processing (scaler + one-hot)
 └── tests/                tests pytest
 ```
 
@@ -71,21 +70,24 @@ le numerique, `Unknown` pour le categoriel) et ecrit `data/dataset.csv`.
 L'environnement est gere par [`uv`](https://docs.astral.sh/uv/) (Python 3.13).
 
 ```bash
-make install     # cree .venv + installe le projet et les dependances
-make data        # prepare data/dataset.csv (fusion + nettoyage des CSV Kaggle)
-make train       # entraine / evalue la baseline -> models/model.joblib
+make install     # cree .venv + installe les dependances
+make test        # verifie config + features (pytest)
 ```
 
-Sortie attendue (ordre de grandeur) :
+Exemple d'utilisation des briques baseline (`PYTHONPATH=src`) :
 
-```
-f1=0.056  roc_auc=0.649
+```python
+from data import load_data, split
+from features import build_preprocessor
+
+df = load_data()
+x_train, x_test, y_train, y_test = split(df)
+pre = build_preprocessor()        # a brancher sur un estimateur (TP suivants)
 ```
 
-Le `roc_auc > 0.5` confirme que la baseline fait mieux que le hasard ; le `f1`
-faible reflete le desequilibre des classes. C'est le point de depart que les
-seances suivantes (MLflow, Optuna, comparaison de modeles, API, orchestration...)
-viendront enrichir.
+> Les briques `config`/`data`/`features` constituent la baseline. L'entrainement
+> du modele, le suivi MLflow, l'API et l'orchestration seront ajoutes au fil des
+> seances.
 
 ## Qualite
 

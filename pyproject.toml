@@ -30,12 +30,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-cov", "ruff", "mypy"]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["churn"]
+[tool.uv]
+# Baseline : modules plats dans src/ (lances via PYTHONPATH=src), pas un package
+# installable. uv ne gere donc que l'environnement et les dependances.
+package = false
 
 [tool.ruff]
 line-length = 100
@@ -43,6 +41,7 @@ target-version = "py313"
 
 [tool.mypy]
 python_version = "3.13"
+mypy_path = "src"
 
 # Le stack scientifique ne fournit pas de stubs de types : on ignore les
 # imports non types pour ces librairies, tout en gardant mypy strict sur src/.
@@ -64,3 +63,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+pythonpath = ["src"]

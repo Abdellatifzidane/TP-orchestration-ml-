@@ -1,8 +1,10 @@
-"""Tests de base du pipeline de classification."""
+"""Tests de base de la baseline de classification."""
 from __future__ import annotations
 
-from churn import config
-from churn.features import build_preprocessor
+import pandas as pd
+
+import config
+from features import EMPLOYED_SENTINEL, add_employment_features, build_preprocessor
 
 
 def test_config_target_and_features():
@@ -13,8 +15,16 @@ def test_config_target_and_features():
     assert config.TARGET not in config.NUMERIC_FEATURES + config.CATEGORICAL_FEATURES
 
 
+def test_employment_feature_engineering():
+    df = pd.DataFrame({"Employed_days": [EMPLOYED_SENTINEL, -1953, 0]})
+    out = add_employment_features(df)
+    assert list(out["is_employed"]) == [0, 1, 1]
+    assert list(out["Employed_days"]) == [0, -1953, 0]
+
+
 def test_build_preprocessor():
     pre = build_preprocessor()
-    cols = [name for _, _, name in pre.transformers]
+    ct = pre.named_steps["columns"]
+    cols = [name for _, _, name in ct.transformers]
     assert config.NUMERIC_FEATURES in cols
     assert config.CATEGORICAL_FEATURES in cols
