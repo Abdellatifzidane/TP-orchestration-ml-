@@ -28,3 +28,13 @@ def test_build_preprocessor():
     cols = [name for _, _, name in ct.transformers]
     assert config.NUMERIC_FEATURES in cols
     assert config.CATEGORICAL_FEATURES in cols
+
+
+def test_model_specs():
+    from train_models import build_model_specs
+
+    specs = build_model_specs()
+    assert [s.name for s in specs] == ["random_forest", "xgboost", "lightgbm"]
+    # Chaque grille cible bien l'etape `clf` du pipeline.
+    for spec in specs:
+        assert all(key.startswith("clf__") for key in spec.param_grid)

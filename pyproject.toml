@@ -57,6 +57,7 @@ module = [
   "lightgbm.*",
   "streamlit.*",
   "pymysql.*",
+  "matplotlib.*",
 ]
 ignore_missing_imports = true
 

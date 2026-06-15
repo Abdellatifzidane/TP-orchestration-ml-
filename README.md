@@ -62,7 +62,9 @@ le categoriel).
 │   ├── config.py         configuration (dataset, cible, features)
 │   ├── data.py           chargement + split train/test
 │   ├── features.py       feature engineering + pre-processing (scaler + one-hot)
-│   └── train.py          entrainement de la baseline LogisticRegression
+│   ├── train.py          entrainement de la baseline LogisticRegression
+│   ├── train_models.py   comparaison RF / XGBoost / LightGBM (GridSearchCV) + MLflow
+│   └── evaluation.py      summary plot SHAP loggue dans MLflow
 └── tests/                tests pytest
 ```
 
@@ -97,6 +99,32 @@ df = load_data()
 x_train, x_test, y_train, y_test = split(df)
 pre = build_preprocessor()
 ```
+
+## Comparaison de modeles + suivi MLflow
+
+`make train-models` optimise trois familles de modeles par `GridSearchCV` et
+sauvegarde la meilleure dans `models/model.joblib` :
+
+```bash
+make train-models                  # CV=5, scoring=roc_auc
+make train-models CV=3 SCORING=f1  # parametrable
+```
+
+- **Random Forest**, **XGBoost** et **LightGBM** (RF et LightGBM en
+  `class_weight="balanced"` pour le desequilibre) ;
+- chaque modele est trace dans un **run MLflow** imbrique sous `compare-models` :
+  hyperparametres, metriques (`cv_*`, `f1`, `roc_auc`), matrice de confusion,
+  rapport de classification et **summary plot SHAP** ;
+- par defaut le suivi est **local** (dossier `./mlruns`). Pour pointer un serveur
+  de tracking (et activer le Model Registry) :
+
+  ```bash
+  export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+  mlflow ui                  # ou le serveur de la stack docker
+  ```
+
+Resultats indicatifs (CV=2) : Random Forest `roc_auc=0.85 / f1=0.60`, devant
+XGBoost et LightGBM (`roc_auc=0.80`).
 
 ## Qualite
 

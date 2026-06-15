@@ -9,6 +9,8 @@ PYTHON       := PYTHONPATH=src uv run python
 RUN          := uv run
 C            ?= 1.0
 MAX_ITER     ?= 1000
+CV           ?= 5
+SCORING      ?= roc_auc
 YELLOW := $(shell printf '\033[33m')
 GREEN  := $(shell printf '\033[32m')
 RED    := $(shell printf '\033[31m')
@@ -17,7 +19,7 @@ RESET  := $(shell printf '\033[0m')
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check-uv install sync lock train lint format type test check
+.PHONY: help check-uv install sync lock train train-models lint format type test check
 
 help: ## Liste des commandes disponibles
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(CYAN)%-14s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -49,6 +51,9 @@ lock: check-uv ## Genere/actualise uv.lock depuis pyproject.toml
 
 train: ## Entraine la baseline -> models/model.joblib (C=.. MAX_ITER=..)
 	$(PYTHON) src/train.py --c $(C) --max-iter $(MAX_ITER)
+
+train-models: ## Compare RF / XGBoost / LightGBM (GridSearchCV) + suivi MLflow (CV=.. SCORING=..)
+	$(PYTHON) src/train_models.py --cv $(CV) --scoring $(SCORING)
 
 # ------------------------------------------------------------------------------
 # Qualite

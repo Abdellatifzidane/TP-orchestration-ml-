@@ -8,10 +8,14 @@ de credit a partir des caracteristiques du demandeur.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # src/config.py -> parents[1] = racine du depot
 ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT / ".env")
 
 # Jeu de donnees prepare (fusion des CSV Kaggle + nettoyage).
 DATA_PATH = ROOT / "data" / "dataset.csv"
@@ -45,3 +49,9 @@ CATEGORICAL_FEATURES: list[str] = [
 ]
 
 RANDOM_STATE = 42
+
+# Suivi d'experiences MLflow (surcouche via variables d'environnement).
+# MLFLOW_TRACKING_URI vide => stockage local par defaut (dossier ./mlruns).
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
+MLFLOW_EXPERIMENT = os.getenv("MLFLOW_EXPERIMENT", "credit-card-approval")
+MODEL_NAME = os.getenv("MODEL_NAME", "credit-card-approval-classifier")
