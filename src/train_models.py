@@ -47,6 +47,7 @@ import config
 from data import load_data, split
 from evaluation import log_shap_summary
 from features import build_preprocessor
+from tracking import log_dataset, setup_experiment
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -223,12 +224,8 @@ def train_all(
 
     registry_available = False
     if use_mlflow:
-        if config.MLFLOW_TRACKING_URI:
-            mlflow.set_tracking_uri(config.MLFLOW_TRACKING_URI)
-            registry_available = config.MLFLOW_TRACKING_URI.startswith(("http://", "https://"))
-        mlflow.set_experiment(config.MLFLOW_EXPERIMENT)
-        uri = config.MLFLOW_TRACKING_URI or "stockage local (./mlruns)"
-        logger.info("Suivi MLflow : %s (experience: %s)", uri, config.MLFLOW_EXPERIMENT)
+        setup_experiment()
+        registry_available = config.MLFLOW_TRACKING_URI.startswith(("http://", "https://"))
 
     results = [
         optimize_model(spec, x_train, y_train, x_test, y_test, cv=cv, scoring=scoring)
@@ -241,6 +238,7 @@ def train_all(
 
     if use_mlflow:
         with mlflow.start_run(run_name="compare-models"):
+            log_dataset(df, context="training")
             mlflow.log_param("cv", cv)
             mlflow.log_param("scoring", scoring)
             mlflow.set_tag("best_model", best.name)
