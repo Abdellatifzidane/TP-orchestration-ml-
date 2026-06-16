@@ -62,8 +62,10 @@ le categoriel).
 │   ├── config.py         configuration (dataset, cible, features)
 │   ├── data.py           chargement + split train/test
 │   ├── features.py       feature engineering + pre-processing (scaler + one-hot)
-│   ├── train.py          entrainement de la baseline LogisticRegression
+│   ├── train.py          entrainement de la baseline LogisticRegression + MLflow
 │   ├── train_models.py   comparaison RF / XGBoost / LightGBM (GridSearchCV) + MLflow
+│   ├── train_optuna.py   optimisation RF / XGBoost / LightGBM (Optuna TPE) + MLflow
+│   ├── tracking.py       config MLflow partagee (experience, tags, dataset lineage)
 │   └── evaluation.py      summary plot SHAP loggue dans MLflow
 └── tests/                tests pytest
 ```
