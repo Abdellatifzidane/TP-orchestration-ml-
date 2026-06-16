@@ -12,6 +12,9 @@ MAX_ITER     ?= 1000
 CV           ?= 5
 SCORING      ?= roc_auc
 N_TRIALS     ?= 30
+API_HOST     ?= 127.0.0.1
+API_PORT     ?= 8000
+INPUT        ?= data/dataset.csv
 YELLOW := $(shell printf '\033[33m')
 GREEN  := $(shell printf '\033[32m')
 RED    := $(shell printf '\033[31m')
@@ -20,7 +23,7 @@ RESET  := $(shell printf '\033[0m')
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check-uv install sync lock train train-models train-optuna lint format type test check
+.PHONY: help check-uv install sync lock train train-models train-optuna api predict lint format type test check
 
 help: ## Liste des commandes disponibles
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(CYAN)%-14s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -60,17 +63,27 @@ train-optuna: ## Optimise RF / XGBoost / LightGBM avec Optuna (TPE) + suivi MLfl
 	$(PYTHON) src/train_optuna.py --n-trials $(N_TRIALS) --cv $(CV)
 
 # ------------------------------------------------------------------------------
+# Inference
+# ------------------------------------------------------------------------------
+
+api: ## Lance l'API FastAPI (docs sur /docs) (API_HOST=.. API_PORT=..)
+	PYTHONPATH=src $(RUN) uvicorn api:app --reload --host $(API_HOST) --port $(API_PORT)
+
+predict: ## Prediction par lot sur un fichier (INPUT=data/dataset.csv)
+	$(PYTHON) predict.py --input $(INPUT)
+
+# ------------------------------------------------------------------------------
 # Qualite
 # ------------------------------------------------------------------------------
 
 lint: ## Verifie le style (ruff)
-	$(RUN) ruff check src tests
+	$(RUN) ruff check src tests predict.py
 
 format: ## Formate le code (ruff)
-	$(RUN) ruff format src tests
+	$(RUN) ruff format src tests predict.py
 
 type: ## Verifie les types (mypy)
-	$(RUN) mypy src
+	$(RUN) mypy src predict.py
 
 test: ## Lance les tests (pytest)
 	$(RUN) pytest

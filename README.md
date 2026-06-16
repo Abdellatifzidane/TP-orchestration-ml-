@@ -128,6 +128,45 @@ make train-models CV=3 SCORING=f1  # parametrable
 Resultats indicatifs (CV=2) : Random Forest `roc_auc=0.85 / f1=0.60`, devant
 XGBoost et LightGBM (`roc_auc=0.80`).
 
+`make train-optuna` fait la meme comparaison avec une recherche **Optuna**
+(sampler TPE) au lieu de la grille : chaque essai est trace dans MLflow.
+
+```bash
+make train-optuna                    # N_TRIALS=30, CV=5
+make train-optuna N_TRIALS=50 CV=3
+```
+
+## Inference : API FastAPI et prediction par lot
+
+Le modele sauvegarde (`models/model.joblib`) est servi par une **API FastAPI**
+(`src/api.py`), qui le charge une seule fois au demarrage :
+
+```bash
+make api                       # http://127.0.0.1:8000/docs
+```
+
+- `GET /health` : etat de l'API + modele charge ;
+- `POST /predict` : prediction (`prediction` 0/1 + `probability`) a partir des
+  caracteristiques d'un demandeur ;
+- `GET /model-info` : version servie (variable d'environnement `MODEL_VERSION`).
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" \
+  -d '{"GENDER":"M","Car_Owner":"Y","Propert_Owner":"Y","CHILDREN":0,
+       "Annual_income":180000.0,"Type_Income":"Pensioner","EDUCATION":"Higher education",
+       "Marital_status":"Married","Housing_type":"House / apartment","Birthday_count":-18772.0,
+       "Employed_days":365243,"Work_Phone":0,"Phone":0,"EMAIL_ID":0,
+       "Type_Occupation":"Unknown","Family_Members":2}'
+```
+
+Pour une **prediction par lot** sans serveur, `predict.py` (a la racine, hors
+`src/`) applique le modele a un fichier CSV ou JSON :
+
+```bash
+make predict INPUT=data/dataset.csv                       # affiche les predictions
+PYTHONPATH=src python predict.py --input demandeur.json --output predictions.csv
+```
+
 ## Qualite
 
 ```bash
