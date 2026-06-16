@@ -1,0 +1,34 @@
+name: CI
+
+# Verifie la qualite du code (lint + types + tests) a chaque push et PR.
+# Pour l'instant on se limite a la qualite du code (pas de build/deploiement).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Qualite du code (lint + types + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Installer uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Installer Python + dependances (dev)
+        run: uv sync --extra dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check src tests scripts/predict.py
+
+      - name: Types (mypy)
+        run: uv run mypy src scripts/predict.py
+
+      - name: Tests (pytest)
+        run: uv run pytest
