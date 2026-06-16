@@ -66,7 +66,10 @@ le categoriel).
 │   ├── train_models.py   comparaison RF / XGBoost / LightGBM (GridSearchCV) + MLflow
 │   ├── train_optuna.py   optimisation RF / XGBoost / LightGBM (Optuna TPE) + MLflow
 │   ├── tracking.py       config MLflow partagee (experience, tags, dataset lineage)
+│   ├── api.py            API FastAPI d'inference (/predict)
 │   └── evaluation.py      summary plot SHAP loggue dans MLflow
+├── scripts/              scripts utilitaires hors package
+│   └── predict.py        prediction par lot (CSV/JSON) a partir du modele
 └── tests/                tests pytest
 ```
 
@@ -159,12 +162,12 @@ curl -X POST http://127.0.0.1:8000/predict -H "Content-Type: application/json" \
        "Type_Occupation":"Unknown","Family_Members":2}'
 ```
 
-Pour une **prediction par lot** sans serveur, `predict.py` (a la racine, hors
-`src/`) applique le modele a un fichier CSV ou JSON :
+Pour une **prediction par lot** sans serveur, `scripts/predict.py` (hors `src/`)
+applique le modele a un fichier CSV ou JSON :
 
 ```bash
-make predict INPUT=data/dataset.csv                       # affiche les predictions
-PYTHONPATH=src python predict.py --input demandeur.json --output predictions.csv
+make predict INPUT=data/dataset.csv                               # affiche les predictions
+PYTHONPATH=src python scripts/predict.py --input demandeur.json --output predictions.csv
 ```
 
 ## Qualite

@@ -70,20 +70,20 @@ api: ## Lance l'API FastAPI (docs sur /docs) (API_HOST=.. API_PORT=..)
 	PYTHONPATH=src $(RUN) uvicorn api:app --reload --host $(API_HOST) --port $(API_PORT)
 
 predict: ## Prediction par lot sur un fichier (INPUT=data/dataset.csv)
-	$(PYTHON) predict.py --input $(INPUT)
+	$(PYTHON) scripts/predict.py --input $(INPUT)
 
 # ------------------------------------------------------------------------------
 # Qualite
 # ------------------------------------------------------------------------------
 
 lint: ## Verifie le style (ruff)
-	$(RUN) ruff check src tests predict.py
+	$(RUN) ruff check src tests scripts/predict.py
 
 format: ## Formate le code (ruff)
-	$(RUN) ruff format src tests predict.py
+	$(RUN) ruff format src tests scripts/predict.py
 
 type: ## Verifie les types (mypy)
-	$(RUN) mypy src predict.py
+	$(RUN) mypy src scripts/predict.py
 
 test: ## Lance les tests (pytest)
 	$(RUN) pytest

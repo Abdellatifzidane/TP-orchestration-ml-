@@ -1,17 +1,18 @@
 """Prediction par lot a partir du modele entraine.
 
-Script utilitaire (hors du package src/) : charge ``models/model.joblib`` et
-applique le pipeline complet (pre-processing + classifieur) a un fichier
-d'entree CSV ou JSON, puis affiche ou ecrit les predictions (classe + proba).
+Script utilitaire (dossier scripts/, hors du package src/) : charge
+``models/model.joblib`` et applique le pipeline complet (pre-processing +
+classifieur) a un fichier d'entree CSV ou JSON, puis affiche ou ecrit les
+predictions (classe + proba).
 
 Le modele est un Pipeline scikit-learn dont l'etape de feature engineering est
 definie dans ``src/features.py`` : il faut donc ``src`` sur le PYTHONPATH pour
 le deserialiser.
 
 Usage :
-    PYTHONPATH=src python predict.py --input data/dataset.csv
-    PYTHONPATH=src python predict.py --input demandeur.json --output predictions.csv
-    PYTHONPATH=src python predict.py --input data/dataset.csv --threshold 0.3
+    PYTHONPATH=src python scripts/predict.py --input data/dataset.csv
+    PYTHONPATH=src python scripts/predict.py --input demandeur.json --output predictions.csv
+    PYTHONPATH=src python scripts/predict.py --input data/dataset.csv --threshold 0.3
 """
 from __future__ import annotations
 
