@@ -14,6 +14,7 @@ SCORING      ?= roc_auc
 N_TRIALS     ?= 30
 API_HOST     ?= 127.0.0.1
 API_PORT     ?= 8000
+API_URL      ?= http://127.0.0.1:8000
 INPUT        ?= data/dataset.csv
 YELLOW := $(shell printf '\033[33m')
 GREEN  := $(shell printf '\033[32m')
@@ -23,7 +24,7 @@ RESET  := $(shell printf '\033[0m')
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check-uv install sync lock train train-models train-optuna api predict docker-build docker-train docker-api compose-up compose-train compose-down lint format type test check
+.PHONY: help check-uv install sync lock train train-models train-optuna api predict frontend docker-build docker-train docker-api docker-frontend compose-up compose-train compose-down lint format type test check
 
 help: ## Liste des commandes disponibles
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(CYAN)%-14s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -72,13 +73,17 @@ api: ## Lance l'API FastAPI (docs sur /docs) (API_HOST=.. API_PORT=..)
 predict: ## Prediction par lot sur un fichier (INPUT=data/dataset.csv)
 	$(PYTHON) scripts/predict.py --input $(INPUT)
 
+frontend: ## Lance le frontend Streamlit (API_URL=..)
+	API_URL=$(API_URL) $(RUN) streamlit run frontend/app.py
+
 # ------------------------------------------------------------------------------
 # Docker
 # ------------------------------------------------------------------------------
 
-docker-build: ## Construit les images Docker (train + api)
+docker-build: ## Construit les images Docker (train + api + frontend)
 	docker build -f docker/Dockerfile.train -t mlops-train .
 	docker build -f docker/Dockerfile.api -t mlops-api .
+	docker build -f docker/Dockerfile.frontend -t mlops-frontend .
 
 docker-train: ## Entraine dans un conteneur (modele -> ./models via volume)
 	docker run --rm -v "$(PWD)/models:/app/models" mlops-train
@@ -86,8 +91,11 @@ docker-train: ## Entraine dans un conteneur (modele -> ./models via volume)
 docker-api: ## Lance l'API conteneurisee (http://localhost:8000/docs)
 	docker run --rm -p $(API_PORT):8000 -v "$(PWD)/models:/app/models:ro" mlops-api
 
-compose-up: ## Demarre la stack mlflow + api (build inclus)
-	docker compose up -d --build mlflow api
+docker-frontend: ## Lance le frontend conteneurise (http://localhost:8501)
+	docker run --rm -p 8501:8501 -e API_URL=http://host.docker.internal:8000 mlops-frontend
+
+compose-up: ## Demarre la stack mlflow + api + frontend (build inclus)
+	docker compose up -d --build mlflow api frontend
 
 compose-train: ## Entrainement one-shot dans la stack (profil train)
 	docker compose --profile train run --rm train
@@ -100,13 +108,13 @@ compose-down: ## Arrete la stack et supprime les conteneurs
 # ------------------------------------------------------------------------------
 
 lint: ## Verifie le style (ruff)
-	$(RUN) ruff check src tests scripts/predict.py
+	$(RUN) ruff check src tests scripts/predict.py frontend/app.py
 
 format: ## Formate le code (ruff)
-	$(RUN) ruff format src tests scripts/predict.py
+	$(RUN) ruff format src tests scripts/predict.py frontend/app.py
 
 type: ## Verifie les types (mypy)
-	$(RUN) mypy src scripts/predict.py
+	$(RUN) mypy src scripts/predict.py frontend/app.py
 
 test: ## Lance les tests (pytest)
 	$(RUN) pytest

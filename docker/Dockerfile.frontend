@@ -1,0 +1,22 @@
+# Image du frontend Streamlit. Appelle l'API via la variable API_URL.
+#
+# Build : docker build -f docker/Dockerfile.frontend -t mlops-frontend .
+# Run   : docker run --rm -p 8501:8501 -e API_URL=http://host.docker.internal:8000 mlops-frontend
+#         -> interface sur http://localhost:8501
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY frontend/ ./frontend/
+
+EXPOSE 8501
+CMD ["streamlit", "run", "frontend/app.py", \
+     "--server.address", "0.0.0.0", "--server.port", "8501"]

@@ -63,6 +63,21 @@ services:
       retries: 10
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    image: mlops-frontend
+    environment:
+      # Resolution DNS interne par le nom de service `api`.
+      API_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   mlflow_data:
   models_data:

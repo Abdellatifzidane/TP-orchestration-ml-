@@ -70,8 +70,10 @@ le categoriel).
 │   └── evaluation.py      summary plot SHAP loggue dans MLflow
 ├── scripts/              scripts utilitaires hors package
 │   └── predict.py        prediction par lot (CSV/JSON) a partir du modele
-├── docker/               Dockerfiles (train + api)
-├── docker-compose.yml    stack mlflow + train + api
+├── frontend/             interface Streamlit (appelle l'API)
+│   └── app.py
+├── docker/               Dockerfiles (train + api + frontend)
+├── docker-compose.yml    stack mlflow + train + api + frontend
 └── tests/                tests pytest
 ```
 
@@ -172,23 +174,35 @@ make predict INPUT=data/dataset.csv                               # affiche les 
 PYTHONPATH=src python scripts/predict.py --input demandeur.json --output predictions.csv
 ```
 
+### Frontend Streamlit
+
+`frontend/app.py` est une interface qui appelle l'API `/predict` (formulaire des
+caracteristiques du demandeur, resultat acceptation/refus + probabilite). L'URL
+de l'API est lue depuis `API_URL`.
+
+```bash
+make api         # dans un terminal : l'API doit tourner
+make frontend    # dans un autre : http://localhost:8501
+```
+
 ## Docker
 
 Les images sont construites avec **uv** (modules plats dans `src/`) a partir de
 `uv.lock` (build reproductible). `libgomp1` est installe pour LightGBM/XGBoost.
 
 ```bash
-make docker-build              # images mlops-train + mlops-api
+make docker-build              # images mlops-train + mlops-api + mlops-frontend
 make docker-train              # entraine dans un conteneur -> ./models/model.joblib
 make docker-api                # API conteneurisee sur http://localhost:8000/docs
+make docker-frontend           # frontend conteneurise sur http://localhost:8501
 ```
 
-Stack complete via `docker compose` (serveur **MLflow** + entrainement + **API**) :
+Stack complete via `docker compose` (**MLflow** + entrainement + **API** + **frontend**) :
 
 ```bash
 docker compose up -d --build mlflow            # 1. serveur de suivi (:5000)
 docker compose --profile train run --rm train  # 2. entrainement -> volume models_data
-docker compose up -d --build api               # 3. API (:8000), lit le modele en lecture seule
+docker compose up -d --build api frontend      # 3. API (:8000) + frontend (:8501)
 docker compose down                            # arret de la stack
 ```
 

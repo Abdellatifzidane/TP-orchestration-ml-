@@ -19,11 +19,18 @@ permissions:
 
 jobs:
   build-push:
-    name: Build & push de l'image API (GHCR)
+    name: Build & push ${{ matrix.image }} (GHCR)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        include:
+          - image: mlops-api
+            dockerfile: docker/Dockerfile.api
+          - image: mlops-frontend
+            dockerfile: docker/Dockerfile.frontend
     steps:
       - name: Checkout du depot
         uses: actions/checkout@v4
@@ -42,7 +49,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/mlops-api
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha
@@ -52,7 +59,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.api
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
