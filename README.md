@@ -70,6 +70,8 @@ le categoriel).
 │   └── evaluation.py      summary plot SHAP loggue dans MLflow
 ├── scripts/              scripts utilitaires hors package
 │   └── predict.py        prediction par lot (CSV/JSON) a partir du modele
+├── docker/               Dockerfiles (train + api)
+├── docker-compose.yml    stack mlflow + train + api
 └── tests/                tests pytest
 ```
 
@@ -169,6 +171,29 @@ applique le modele a un fichier CSV ou JSON :
 make predict INPUT=data/dataset.csv                               # affiche les predictions
 PYTHONPATH=src python scripts/predict.py --input demandeur.json --output predictions.csv
 ```
+
+## Docker
+
+Les images sont construites avec **uv** (modules plats dans `src/`) a partir de
+`uv.lock` (build reproductible). `libgomp1` est installe pour LightGBM/XGBoost.
+
+```bash
+make docker-build              # images mlops-train + mlops-api
+make docker-train              # entraine dans un conteneur -> ./models/model.joblib
+make docker-api                # API conteneurisee sur http://localhost:8000/docs
+```
+
+Stack complete via `docker compose` (serveur **MLflow** + entrainement + **API**) :
+
+```bash
+docker compose up -d --build mlflow            # 1. serveur de suivi (:5000)
+docker compose --profile train run --rm train  # 2. entrainement -> volume models_data
+docker compose up -d --build api               # 3. API (:8000), lit le modele en lecture seule
+docker compose down                            # arret de la stack
+```
+
+Le service `train` envoie son suivi vers `http://mlflow:5000` (resolution DNS
+interne) et partage le modele avec l'`api` via le volume `models_data`.
 
 ## Qualite
 

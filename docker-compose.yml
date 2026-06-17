@@ -1,0 +1,68 @@
+# Stack de classification conteneurisee (inspiree de todo/docker-compose.yml,
+# adaptee a la structure plate src/ ; pas de frontend dans ce projet).
+#
+# Services :
+#   - mlflow : serveur de suivi (UI + Model Registry) sur :5000
+#   - train  : entrainement one-shot (profil "train"), ecrit le modele dans le
+#              volume partage models_data
+#   - api    : API FastAPI d'inference sur :8000, lit le modele en lecture seule
+#
+# Sequence typique (depuis la racine du projet) :
+#   docker compose up -d --build mlflow            # 1. serveur de suivi
+#   docker compose --profile train run --rm train  # 2. entrainement -> modele
+#   docker compose up -d --build api               # 3. API (recharge le modele au demarrage)
+#   -> API http://localhost:8000/docs , MLflow http://localhost:5000
+
+services:
+  mlflow:
+    # Reutilise l'image du projet (mlflow y est deja installe via uv) : version
+    # coherente avec pyproject, pas de dependance a un tag d'image externe.
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train
+    image: mlops-train
+    command: >
+      mlflow server
+      --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+
+  train:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train
+    image: mlops-train
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    depends_on:
+      - mlflow
+    volumes:
+      - models_data:/app/models
+    # Profil "train" : service one-shot, ne demarre pas avec un simple `up`.
+    profiles:
+      - train
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: mlops-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - models_data:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mlflow_data:
+  models_data:

@@ -1,0 +1,24 @@
+# Environnements et caches
+.venv/
+todo/.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Sorties / artefacts (regeneres dans le conteneur ou montes en volume)
+mlruns/
+mlartifacts/
+mlflow.db
+models/
+
+# Materiel hors application (non necessaire au build des images)
+todo/
+slides/
+tp/
+.github/
+tests/
+.git/
+*.md
+.env

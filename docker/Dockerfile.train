@@ -1,0 +1,35 @@
+# Image d'entrainement : execute l'entrainement de facon reproductible et
+# ecrit models/model.joblib (a monter en volume pour le recuperer sur l'hote).
+#
+# Build : docker build -f docker/Dockerfile.train -t mlops-train .
+# Run   : docker run --rm -v "$PWD/models:/app/models" mlops-train
+#
+# Le projet utilise uv (modules plats dans src/, package = false) : on part donc
+# de l'image officielle uv + Python 3.13 et on installe les dependances via
+# `uv sync` a partir de uv.lock (build reproductible).
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# libgomp1 : runtime OpenMP requis par LightGBM / XGBoost
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Dependances d'abord (cache de layers : inchangees tant que pyproject/uv.lock
+# ne bougent pas), AVANT de copier le code.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Code source et donnees
+COPY src/ ./src/
+COPY data/ ./data/
+
+# Commande par defaut : baseline. Surchargeable au run, ex :
+#   docker run --rm mlops-train python src/train_models.py --cv 3
+CMD ["python", "src/train.py"]

@@ -23,7 +23,7 @@ RESET  := $(shell printf '\033[0m')
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check-uv install sync lock train train-models train-optuna api predict lint format type test check
+.PHONY: help check-uv install sync lock train train-models train-optuna api predict docker-build docker-train docker-api compose-up compose-train compose-down lint format type test check
 
 help: ## Liste des commandes disponibles
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(CYAN)%-14s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -71,6 +71,29 @@ api: ## Lance l'API FastAPI (docs sur /docs) (API_HOST=.. API_PORT=..)
 
 predict: ## Prediction par lot sur un fichier (INPUT=data/dataset.csv)
 	$(PYTHON) scripts/predict.py --input $(INPUT)
+
+# ------------------------------------------------------------------------------
+# Docker
+# ------------------------------------------------------------------------------
+
+docker-build: ## Construit les images Docker (train + api)
+	docker build -f docker/Dockerfile.train -t mlops-train .
+	docker build -f docker/Dockerfile.api -t mlops-api .
+
+docker-train: ## Entraine dans un conteneur (modele -> ./models via volume)
+	docker run --rm -v "$(PWD)/models:/app/models" mlops-train
+
+docker-api: ## Lance l'API conteneurisee (http://localhost:8000/docs)
+	docker run --rm -p $(API_PORT):8000 -v "$(PWD)/models:/app/models:ro" mlops-api
+
+compose-up: ## Demarre la stack mlflow + api (build inclus)
+	docker compose up -d --build mlflow api
+
+compose-train: ## Entrainement one-shot dans la stack (profil train)
+	docker compose --profile train run --rm train
+
+compose-down: ## Arrete la stack et supprime les conteneurs
+	docker compose down
 
 # ------------------------------------------------------------------------------
 # Qualite

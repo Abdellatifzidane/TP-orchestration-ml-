@@ -1,0 +1,26 @@
+# Image de l'API FastAPI d'inference. Sert le modele monte sur /app/models.
+#
+# Build : docker build -f docker/Dockerfile.api -t mlops-api .
+# Run   : docker run --rm -p 8000:8000 -v "$PWD/models:/app/models:ro" mlops-api
+#         -> documentation interactive sur http://localhost:8000/docs
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# libgomp1 : runtime OpenMP requis pour deserialiser un modele LightGBM / XGBoost
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY src/ ./src/
+
+EXPOSE 8000
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
