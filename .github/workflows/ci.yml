@@ -1,27 +1,42 @@
 name: CI
 
-# Verifie la qualite du code (lint + types + tests) a chaque push et PR.
-# Pour l'instant on se limite a la qualite du code (pas de build/deploiement).
+# A chaque push et pull request (et sur demande manuelle), verifie la qualite du
+# code (lint + types + tests) puis entraine la baseline et publie le modele en
+# artefact (illustration du "Continuous Training").
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+# Annule un run en cours si on repousse sur la meme ref (economise des minutes).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Permissions minimales par defaut.
+permissions:
+  contents: read
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Qualite : lint (ruff) + types (mypy) + tests (pytest). Le "quality gate".
+  # ---------------------------------------------------------------------------
   quality:
-    name: Qualite du code (lint + types + tests)
+    name: Qualite (lint + types + tests)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout du depot
         uses: actions/checkout@v4
 
-      - name: Installer uv
+      - name: Installation de uv (avec cache)
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
 
-      - name: Installer Python + dependances (dev)
+      - name: Installation des dependances (projet + dev)
         run: uv sync --extra dev
 
       - name: Lint (ruff)
@@ -32,3 +47,36 @@ jobs:
 
       - name: Tests (pytest)
         run: uv run pytest
+
+  # ---------------------------------------------------------------------------
+  # 2. Entrainement : entraine la baseline et publie le modele en artefact
+  #    (illustration du "Continuous Training"). Ne s'execute que si quality est vert.
+  # ---------------------------------------------------------------------------
+  train:
+    name: Entrainement (Continuous Training)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - name: Checkout du depot
+        uses: actions/checkout@v4
+
+      - name: Installation de uv (avec cache)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Installation des dependances
+        run: uv sync
+
+      - name: Entrainement de la baseline
+        # Le dataset (data/dataset.csv) est versionne : pas d'etape de preparation.
+        # --no-mlflow : pas de serveur de tracking en CI, on veut juste le modele.
+        run: PYTHONPATH=src uv run python src/train.py --no-mlflow
+
+      - name: Publication du modele en artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: models/model.joblib
+          if-no-files-found: error
