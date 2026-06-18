@@ -21,6 +21,11 @@ services:
       context: .
       dockerfile: docker/Dockerfile.train
     image: mlops-train
+    environment:
+      # MLflow 3.x : autorise les Origin headers (CORS/CSRF de fastapi_security).
+      # Sinon l'UI elle-meme est bloquee avec des "Blocked cross-origin request".
+      MLFLOW_ALLOWED_ORIGINS: "*"
+      MLFLOW_SERVER_ALLOWED_ORIGINS: "*"
     command: >
       mlflow server
       --host 0.0.0.0 --port 5000
