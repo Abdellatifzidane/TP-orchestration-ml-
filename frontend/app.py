@@ -25,6 +25,7 @@ API_URL = os.environ.get("API_URL", "http://127.0.0.1:8000")
 # `http://api:8000`, alors que le navigateur a besoin de l'IP/host externe.
 API_PUBLIC_URL = os.environ.get("API_PUBLIC_URL", API_URL)
 MLFLOW_URL = os.environ.get("MLFLOW_URL", "http://127.0.0.1:5000")
+AIRFLOW_URL = os.environ.get("AIRFLOW_URL", "http://127.0.0.1:8080")
 REPO_URL = os.environ.get(
     "REPO_URL", "https://github.com/Abdellatifzidane/TP-orchestration-ml-"
 )
@@ -114,6 +115,7 @@ with st.sidebar:
 - [API Swagger UI]({API_PUBLIC_URL}/docs)
 - [API ReDoc]({API_PUBLIC_URL}/redoc)
 - [MLflow Tracking]({MLFLOW_URL})
+- [Airflow UI]({AIRFLOW_URL})
 - [Code source]({REPO_URL})
 """
     )
@@ -168,10 +170,11 @@ with tab_landing:
            performances et les explications.
         """
     )
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.link_button("Swagger UI", f"{API_PUBLIC_URL}/docs", use_container_width=True)
     col2.link_button("MLflow Tracking", MLFLOW_URL, use_container_width=True)
-    col3.link_button("Code source (GitHub)", REPO_URL, use_container_width=True)
+    col3.link_button("Airflow UI", AIRFLOW_URL, use_container_width=True)
+    col4.link_button("Code source (GitHub)", REPO_URL, use_container_width=True)
 
 # --- Onglet 2 : prediction ------------------------------------------------
 with tab_predict:

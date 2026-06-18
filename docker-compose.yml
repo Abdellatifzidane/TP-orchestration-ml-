@@ -78,6 +78,7 @@ services:
       # Sinon, fallback `localhost` (OK en developpement local).
       API_PUBLIC_URL: http://${PUBLIC_HOST:-localhost}:8000
       MLFLOW_URL: http://${PUBLIC_HOST:-localhost}:5000
+      AIRFLOW_URL: http://${PUBLIC_HOST:-localhost}:8080
     ports:
       - "8501:8501"
     depends_on:
