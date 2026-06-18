@@ -108,7 +108,10 @@ services:
       - airflow
 
   airflow-init:
-    image: &airflow_image apache/airflow:2.10.5-python3.11
+    build: &airflow_build
+      context: .
+      dockerfile: docker/Dockerfile.airflow
+    image: mlops-airflow
     depends_on:
       airflow-postgres:
         condition: service_healthy
@@ -123,18 +126,6 @@ services:
       # URI MLflow + API joignables via le reseau Docker (memes hostnames).
       MLFLOW_TRACKING_URI: http://mlflow:5000
       API_URL: http://api:8000
-      # Deps installees au demarrage (seule contrainte versus une image custom).
-      _PIP_ADDITIONAL_REQUIREMENTS: >-
-        mlflow==3.5.0
-        scikit-learn
-        lightgbm
-        xgboost
-        pandas
-        joblib
-        httpx
-        python-dotenv
-        matplotlib
-        shap
     user: "0:0"  # init a besoin d'ecrire dans les volumes (chown des logs)
     volumes: &airflow_volumes
       - ./dags:/opt/airflow/dags
@@ -155,7 +146,8 @@ services:
       - airflow
 
   airflow-scheduler:
-    image: *airflow_image
+    build: *airflow_build
+    image: mlops-airflow
     depends_on:
       airflow-init:
         condition: service_completed_successfully
@@ -168,7 +160,8 @@ services:
       - airflow
 
   airflow-webserver:
-    image: *airflow_image
+    build: *airflow_build
+    image: mlops-airflow
     depends_on:
       airflow-init:
         condition: service_completed_successfully
