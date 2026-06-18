@@ -55,7 +55,7 @@ with DAG(
     description="Envoie 20 previsions par jour a l'API (trafic simule)",
     default_args=default_args,
     start_date=pendulum.datetime(2024, 1, 1, tz="Europe/Paris"),
-    schedule="30 17 * * *",  # tous les jours a 17h30 (Europe/Paris)
+    schedule="0 18 * * *",  # tous les jours a 18h00 (Europe/Paris)
     catchup=False,
     tags=["classification", "predictions"],
 ) as dag:
