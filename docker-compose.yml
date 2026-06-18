@@ -138,9 +138,10 @@ services:
     command:
       - -c
       - |
-        # Donne les droits d'ecriture sur logs/ a l'utilisateur airflow (UID 50000)
-        # sinon scheduler/webserver echouent en PermissionError sur /opt/airflow/logs.
-        chown -R 50000:0 /opt/airflow/logs
+        # Donne les droits d'ecriture sur logs/ et models/ a l'utilisateur
+        # airflow (UID 50000) sinon scheduler/webserver/worker echouent en
+        # PermissionError (logs Airflow et model.joblib produit par le DAG train).
+        chown -R 50000:0 /opt/airflow/logs /opt/project/models
         airflow db migrate
         airflow users create \
           --username admin --password admin \
