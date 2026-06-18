@@ -1,7 +1,8 @@
 """Frontend Streamlit : demonstrateur de l'API de classification.
 
 Application qui appelle l'API FastAPI (src/api.py) pour predire l'acceptation
-(1) ou le refus (0) d'une demande de carte de credit.
+(1) ou le refus (0) d'une demande de carte de credit. L'utilisateur peut choisir
+le modele a interroger parmi ceux exposes par ``GET /models``.
 
 L'URL de l'API est lue depuis la variable d'environnement API_URL (en docker
 compose, l'API est joignable via le nom de service `api`).
@@ -50,10 +51,64 @@ TYPE_OCCUPATION = [
     "Cooking staff",
 ]
 
-st.set_page_config(page_title="Acceptation carte de credit", layout="centered")
-st.title("Demonstrateur - Acceptation de carte de credit")
+# Description des modeles servis par l'API (cf. src/train_models.py).
+MODEL_DESCRIPTIONS = {
+    "default": "Modele actif (model.joblib) : meilleur modele selectionne lors du dernier entrainement.",
+    "random_forest": "Random Forest - ensemble d'arbres robuste, bonne baseline non lineaire.",
+    "xgboost": "XGBoost - boosting de gradient performant et bien tolerant aux donnees mixtes.",
+    "lightgbm": "LightGBM - boosting rapide, optimise pour les gros volumes.",
+}
 
-# --- Barre laterale : etat de l'API ---------------------------------------
+
+def fetch_models(url: str) -> list[str]:
+    """Recupere la liste des modeles disponibles aupres de l'API."""
+    try:
+        data = httpx.get(f"{url}/models", timeout=5.0).json()
+    except httpx.HTTPError:
+        return []
+    return list(data.get("available", []))
+
+
+st.set_page_config(page_title="Acceptation carte de credit", layout="wide")
+
+# --- Landing : problematique du projet ------------------------------------
+st.title("Acceptation de carte de credit")
+st.markdown(
+    """
+    ### Problematique
+
+    Les etablissements bancaires recoivent un grand nombre de demandes de
+    cartes de credit et doivent decider, pour chaque demandeur, d'**accepter**
+    ou de **refuser** la demande. Cette decision doit etre :
+
+    - **Rapide** : un demandeur attend une reponse quasi immediate.
+    - **Coherente** : a profil equivalent, la decision doit etre la meme.
+    - **Tracable** : la banque doit pouvoir expliquer le choix (regulation).
+
+    Cette application met en demonstration un modele de **classification binaire**
+    qui predit, a partir des caracteristiques du demandeur (revenus, situation
+    familiale, anciennete d'emploi, etc.), la probabilite que sa demande soit
+    acceptee (classe 1) ou refusee (classe 0).
+    """
+)
+
+with st.expander("Comment ca marche"):
+    st.markdown(
+        """
+        1. Le **service d'entrainement** compare plusieurs familles de modeles
+           (Random Forest, XGBoost, LightGBM) avec une recherche
+           d'hyperparametres et un suivi MLflow.
+        2. Chaque modele est sauvegarde dans ``models/`` et expose par l'**API
+           FastAPI** (cf. ``/docs``).
+        3. Ce frontend Streamlit appelle l'API : choisissez un modele dans la
+           barre laterale, saisissez les caracteristiques d'un demandeur,
+           cliquez sur **Predire**.
+        """
+    )
+
+st.divider()
+
+# --- Barre laterale : API + selection du modele ---------------------------
 with st.sidebar:
     st.header("API")
     api_url = st.text_input("URL de l'API", value=API_URL)
@@ -69,6 +124,19 @@ with st.sidebar:
             else:
                 st.warning("API OK mais modele non charge")
             st.caption(f"Version servie : {info.get('version', 'unknown')}")
+
+    st.header("Modele")
+    available = fetch_models(api_url)
+    if not available:
+        st.warning("Aucun modele disponible (verifiez l'API).")
+        chosen_model = "default"
+    else:
+        chosen_model = st.selectbox(
+            "Choisir le modele",
+            options=available,
+            index=available.index("default") if "default" in available else 0,
+        )
+        st.caption(MODEL_DESCRIPTIONS.get(chosen_model, "Modele personnalise."))
 
 # --- Formulaire de prediction ---------------------------------------------
 st.subheader("Caracteristiques du demandeur")
@@ -116,7 +184,12 @@ if submitted:
         "Family_Members": int(family_members),
     }
     try:
-        response = httpx.post(f"{api_url}/predict", json=payload, timeout=10.0)
+        response = httpx.post(
+            f"{api_url}/predict",
+            params={"model": chosen_model},
+            json=payload,
+            timeout=10.0,
+        )
         response.raise_for_status()
         result = response.json()
     except httpx.HTTPError as exc:
@@ -124,6 +197,8 @@ if submitted:
     else:
         prediction = result["prediction"]
         probability = result["probability"]
+        served_by = result.get("model", chosen_model)
+        st.caption(f"Modele utilise : **{served_by}**")
         if prediction == 1:
             st.success("Demande ACCEPTEE (classe 1)")
         else:

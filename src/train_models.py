@@ -254,6 +254,13 @@ def train_all(
     joblib.dump(best.best_estimator, config.MODEL_DIR / "model.joblib")
     logger.info("Modele sauvegarde dans %s", config.MODEL_DIR / "model.joblib")
 
+    # Persiste aussi chaque modele individuellement pour que l'API puisse
+    # servir n'importe quelle famille (random_forest, xgboost, lightgbm).
+    for result in results:
+        path = config.MODEL_DIR / f"{result.name}.joblib"
+        joblib.dump(result.best_estimator, path)
+        logger.info("Modele '%s' sauvegarde dans %s", result.name, path)
+
     return results
 
 

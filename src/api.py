@@ -1,8 +1,11 @@
 """API d'inference FastAPI pour le modele de classification.
 
-Sert le modele entraine (``models/model.joblib``) pour predire l'acceptation
-(1) ou le refus (0) d'une demande de carte de credit. Le modele est charge une
-seule fois au demarrage (lifespan), pas a chaque requete.
+Sert le(s) modele(s) entraine(s) presents dans ``models/`` pour predire
+l'acceptation (1) ou le refus (0) d'une demande de carte de credit. Tous les
+``*.joblib`` du dossier sont charges une seule fois au demarrage (lifespan) :
+``model.joblib`` est le defaut, les autres (``random_forest.joblib``,
+``xgboost.joblib``, ``lightgbm.joblib``, ...) sont selectionnables via
+``?model=<nom>`` sur ``/predict``.
 
 Lancement :
     PYTHONPATH=src uv run uvicorn api:app --reload   # make api
@@ -25,23 +28,40 @@ from config import MODEL_DIR
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-ml: dict = {}
+DEFAULT_MODEL = "default"
+
+ml: dict = {"models": {}}
+
+
+def _load_models() -> dict:
+    """Charge tous les ``*.joblib`` de ``MODEL_DIR`` en memoire."""
+    models: dict = {}
+    if not MODEL_DIR.exists():
+        return models
+    for path in sorted(MODEL_DIR.glob("*.joblib")):
+        name = DEFAULT_MODEL if path.stem == "model" else path.stem
+        try:
+            models[name] = joblib.load(path)
+            logger.info("Modele '%s' charge depuis %s", name, path)
+        except Exception:  # noqa: BLE001
+            logger.exception("Echec du chargement du modele %s", path)
+    return models
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Charge le modele au demarrage et le libere a l'arret."""
-    model_path = MODEL_DIR / "model.joblib"
-    if model_path.exists():
-        ml["model"] = joblib.load(model_path)
-        logger.info("Modele charge depuis %s", model_path)
-    else:
-        logger.warning("Modele introuvable (%s) : lancez 'make train' d'abord", model_path)
+    """Charge tous les modeles disponibles au demarrage et les libere a l'arret."""
+    ml["models"] = _load_models()
+    if not ml["models"]:
+        logger.warning(
+            "Aucun modele trouve dans %s : lancez 'make train' ou 'make train-models'",
+            MODEL_DIR,
+        )
     yield
     ml.clear()
 
 
-app = FastAPI(title="Credit Card Approval API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Credit Card Approval API", version="0.2.0", lifespan=lifespan)
 
 
 class Applicant(BaseModel):
@@ -95,23 +115,43 @@ class PredictionOut(BaseModel):
 
     prediction: int = Field(..., description="Classe predite : 1 = acceptee, 0 = refusee")
     probability: float = Field(..., description="Probabilite de la classe 1")
+    model: str = Field(..., description="Nom du modele utilise pour la prediction")
 
 
 @app.get("/health")
 def health() -> dict:
-    """Verifie que l'API repond et que le modele est charge."""
-    return {"status": "ok", "model_loaded": "model" in ml}
+    """Verifie que l'API repond et que au moins un modele est charge."""
+    return {"status": "ok", "model_loaded": bool(ml.get("models"))}
+
+
+@app.get("/models")
+def list_models() -> dict:
+    """Liste les modeles disponibles pour l'inference."""
+    return {
+        "available": sorted(ml.get("models", {}).keys()),
+        "default": DEFAULT_MODEL if DEFAULT_MODEL in ml.get("models", {}) else None,
+    }
 
 
 @app.post("/predict", response_model=PredictionOut)
-def predict(applicant: Applicant) -> PredictionOut:
-    """Predit l'acceptation d'une demande a partir des caracteristiques fournies."""
-    model = ml.get("model")
-    if model is None:
-        raise HTTPException(status_code=503, detail="Modele non charge")
+def predict(applicant: Applicant, model: str = DEFAULT_MODEL) -> PredictionOut:
+    """Predit l'acceptation d'une demande. Choix du modele via ``?model=<nom>``."""
+    models = ml.get("models", {})
+    if not models:
+        raise HTTPException(status_code=503, detail="Aucun modele charge")
+    chosen = models.get(model)
+    if chosen is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Modele '{model}' introuvable (disponibles : {sorted(models.keys())})",
+        )
     row = pd.DataFrame([applicant.model_dump()])
-    proba = float(model.predict_proba(row)[0, 1])
-    return PredictionOut(prediction=int(proba >= 0.5), probability=round(proba, 4))
+    proba = float(chosen.predict_proba(row)[0, 1])
+    return PredictionOut(
+        prediction=int(proba >= 0.5),
+        probability=round(proba, 4),
+        model=model,
+    )
 
 
 @app.get("/model-info")
