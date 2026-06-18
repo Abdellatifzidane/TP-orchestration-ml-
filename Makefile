@@ -24,7 +24,7 @@ RESET  := $(shell printf '\033[0m')
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check-uv install sync lock train train-models train-optuna api predict frontend docker-build docker-train docker-api docker-frontend compose-up compose-train compose-down lint format type test check
+.PHONY: help check-uv install sync lock train train-models train-optuna api predict frontend docker-build docker-train docker-api docker-frontend compose-up compose-train compose-down airflow-up airflow-down airflow-logs lint format type test check
 
 help: ## Liste des commandes disponibles
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "$(CYAN)%-14s$(RESET) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -102,6 +102,20 @@ compose-train: ## Entrainement one-shot dans la stack (profil train)
 
 compose-down: ## Arrete la stack et supprime les conteneurs
 	docker compose down
+
+# ------------------------------------------------------------------------------
+# Airflow (profil airflow : postgres + init + scheduler + webserver)
+# ------------------------------------------------------------------------------
+
+airflow-up: ## Demarre Airflow (UI: http://localhost:8080, login admin/admin)
+	docker compose --profile airflow up -d airflow-init
+	docker compose --profile airflow up -d airflow-scheduler airflow-webserver
+
+airflow-down: ## Arrete les services Airflow (conserve les volumes)
+	docker compose --profile airflow stop airflow-webserver airflow-scheduler airflow-postgres
+
+airflow-logs: ## Suit les logs du scheduler Airflow
+	docker compose logs -f airflow-scheduler
 
 # ------------------------------------------------------------------------------
 # Qualite

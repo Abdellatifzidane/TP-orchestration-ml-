@@ -85,6 +85,110 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # Airflow (LocalExecutor + Postgres)
+  # ---------------------------------------------------------------------------
+  # Lancement separe : `make airflow-up` (lance d'abord postgres+init puis
+  # scheduler+webserver). UI sur http://localhost:8080 (login admin/admin).
+  # Profil "airflow" : ces services ne demarrent pas avec un simple `up`.
+
+  airflow-postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 10
+    profiles:
+      - airflow
+
+  airflow-init:
+    image: &airflow_image apache/airflow:2.10.5-python3.11
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    environment: &airflow_env
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: "airflow-dev-secret"
+      # Notre code (src/) sur le PYTHONPATH pour que les DAGs puissent
+      # `from train import train`, `from data import load_data`, etc.
+      PYTHONPATH: /opt/project/src
+      # URI MLflow + API joignables via le reseau Docker (memes hostnames).
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      API_URL: http://api:8000
+      # Deps installees au demarrage (seule contrainte versus une image custom).
+      _PIP_ADDITIONAL_REQUIREMENTS: >-
+        mlflow==3.5.0
+        scikit-learn
+        lightgbm
+        xgboost
+        pandas
+        joblib
+        httpx
+        python-dotenv
+        matplotlib
+        shap
+    user: "0:0"  # init a besoin d'ecrire dans les volumes (chown des logs)
+    volumes: &airflow_volumes
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/project/src:ro
+      - ./data:/opt/project/data:ro
+      - models_data:/opt/project/models
+      - airflow_logs:/opt/airflow/logs
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin --password admin \
+          --firstname admin --lastname admin \
+          --role Admin --email admin@example.com || true
+    profiles:
+      - airflow
+
+  airflow-scheduler:
+    image: *airflow_image
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment: *airflow_env
+    volumes: *airflow_volumes
+    working_dir: /opt/project
+    command: scheduler
+    restart: unless-stopped
+    profiles:
+      - airflow
+
+  airflow-webserver:
+    image: *airflow_image
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment: *airflow_env
+    volumes: *airflow_volumes
+    working_dir: /opt/project
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - airflow
+
 volumes:
   mlflow_data:
   models_data:
+  airflow_pg_data:
+  airflow_logs:
