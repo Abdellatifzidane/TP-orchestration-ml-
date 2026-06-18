@@ -60,7 +60,7 @@ def task_check_quality(**context) -> None:
 with DAG(
     dag_id="model_retraining",
     description="Prepare les donnees, reentraine la baseline LogReg et controle sa qualite",
-    schedule="30 17 * * *",  # tous les jours a 17h30 (Europe/Paris)
+    schedule="0 18 * * *",  # tous les jours a 18h00 (Europe/Paris)
     start_date=pendulum.datetime(2024, 1, 1, tz="Europe/Paris"),
     catchup=False,
     default_args=default_args,
