@@ -44,7 +44,7 @@ def build_model(c: float = 1.0, max_iter: int = 1000) -> Pipeline:
     return Pipeline(
         steps=[
             ("preprocessor", build_preprocessor()),
-            ("clf", LogisticRegression(C=c, max_iter=max_iter)),
+            ("clf", LogisticRegression(C=c, max_iter=max_iter, class_weight="balanced")),
         ]
     )
 

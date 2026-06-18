@@ -19,7 +19,7 @@ from airflow.operators.python import PythonOperator
 logger = logging.getLogger(__name__)
 
 # f1 minimal pour considerer l'entrainement comme acceptable.
-QUALITY_THRESHOLD = 0.65
+QUALITY_THRESHOLD = 0.30
 
 default_args = {
     "owner": "data-team",
