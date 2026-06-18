@@ -15,24 +15,16 @@
 
 services:
   mlflow:
-    # Reutilise l'image du projet (mlflow y est deja installe via uv) : version
-    # coherente avec pyproject, pas de dependance a un tag d'image externe.
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.train
-    image: mlops-train
-    environment:
-      # MLflow 3.x : autorise les Origin headers (CORS/CSRF de fastapi_security).
-      # Sinon l'UI elle-meme est bloquee avec des "Blocked cross-origin request".
-      MLFLOW_ALLOWED_ORIGINS: "*"
-      MLFLOW_SERVER_ALLOWED_ORIGINS: "*"
+    # Image officielle MLflow 2.x : pas de fastapi_security (qui bloque les
+    # requetes cross-origin meme depuis le navigateur sur le meme host dans
+    # MLflow 3.x). Le client (train) reste sur sa version installee via uv.
+    image: ghcr.io/mlflow/mlflow:v2.20.3
     command: >
       mlflow server
       --host 0.0.0.0 --port 5000
       --backend-store-uri sqlite:////mlflow/mlflow.db
       --artifacts-destination /mlflow/artifacts
       --serve-artifacts
-      --allowed-hosts "*"
     ports:
       - "5000:5000"
     volumes:
