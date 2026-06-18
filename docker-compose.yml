@@ -69,8 +69,14 @@ services:
       dockerfile: docker/Dockerfile.frontend
     image: mlops-frontend
     environment:
-      # Resolution DNS interne par le nom de service `api`.
+      # API_URL : appel HTTP interne (le frontend resout `api` via le reseau Docker).
       API_URL: http://api:8000
+      # API_PUBLIC_URL / MLFLOW_URL : liens cliquables, vus par le navigateur de
+      # l'utilisateur. Definir PUBLIC_HOST avant `docker compose up` :
+      #   export PUBLIC_HOST=141.253.114.132   # IP publique du VPS
+      # Sinon, fallback `localhost` (OK en developpement local).
+      API_PUBLIC_URL: http://${PUBLIC_HOST:-localhost}:8000
+      MLFLOW_URL: http://${PUBLIC_HOST:-localhost}:5000
     ports:
       - "8501:8501"
     depends_on:

@@ -20,6 +20,10 @@ import pandas as pd
 import streamlit as st
 
 API_URL = os.environ.get("API_URL", "http://127.0.0.1:8000")
+# URL "publique" utilisee pour les liens cliquables du navigateur (Swagger,
+# ReDoc, MLflow). En docker-compose, API_URL pointe sur l'hostname interne
+# `http://api:8000`, alors que le navigateur a besoin de l'IP/host externe.
+API_PUBLIC_URL = os.environ.get("API_PUBLIC_URL", API_URL)
 MLFLOW_URL = os.environ.get("MLFLOW_URL", "http://127.0.0.1:5000")
 REPO_URL = os.environ.get(
     "REPO_URL", "https://github.com/Abdellatifzidane/TP-orchestration-ml-"
@@ -107,8 +111,8 @@ with st.sidebar:
     st.header("Navigation")
     st.markdown(
         f"""
-- [API Swagger UI]({api_url}/docs)
-- [API ReDoc]({api_url}/redoc)
+- [API Swagger UI]({API_PUBLIC_URL}/docs)
+- [API ReDoc]({API_PUBLIC_URL}/redoc)
 - [MLflow Tracking]({MLFLOW_URL})
 - [Code source]({REPO_URL})
 """
@@ -160,7 +164,7 @@ with tab_landing:
         """
     )
     col1, col2, col3 = st.columns(3)
-    col1.link_button("Swagger UI", f"{api_url}/docs", use_container_width=True)
+    col1.link_button("Swagger UI", f"{API_PUBLIC_URL}/docs", use_container_width=True)
     col2.link_button("MLflow Tracking", MLFLOW_URL, use_container_width=True)
     col3.link_button("Code source (GitHub)", REPO_URL, use_container_width=True)
 
