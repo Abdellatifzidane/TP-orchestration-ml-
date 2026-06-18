@@ -84,7 +84,7 @@ def train(c: float = 1.0, max_iter: int = 1000, use_mlflow: bool = True) -> dict
             signature = infer_signature(x_test, model.predict(x_test))
             mlflow.sklearn.log_model(
                 model,
-                name="model",
+                artifact_path="model",
                 signature=signature,
                 input_example=x_test.iloc[:5],
             )

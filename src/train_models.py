@@ -200,7 +200,7 @@ def log_run_to_mlflow(
         signature = infer_signature(x_test, result.best_estimator.predict(x_test))
         mlflow.sklearn.log_model(
             result.best_estimator,
-            name="model",
+            artifact_path="model",
             signature=signature,
             input_example=x_test.iloc[:5],
             registered_model_name=register_as,
