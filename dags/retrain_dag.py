@@ -9,9 +9,10 @@ relit et fait echouer le DAG si elle passe sous ``QUALITY_THRESHOLD``.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
+import pendulum
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -59,8 +60,8 @@ def task_check_quality(**context) -> None:
 with DAG(
     dag_id="model_retraining",
     description="Prepare les donnees, reentraine la baseline LogReg et controle sa qualite",
-    schedule="0 3 * * 1",  # tous les lundis a 3h
-    start_date=datetime(2024, 1, 1),
+    schedule="0 17 * * *",  # tous les jours a 17h00 (Europe/Paris)
+    start_date=pendulum.datetime(2024, 1, 1, tz="Europe/Paris"),
     catchup=False,
     default_args=default_args,
     tags=["classification", "training"],

@@ -12,8 +12,9 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 
+import pendulum
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
@@ -53,8 +54,8 @@ with DAG(
     dag_id="daily_predictions",
     description="Envoie 20 previsions par jour a l'API (trafic simule)",
     default_args=default_args,
-    start_date=datetime(2024, 1, 1),
-    schedule="0 10 * * *",  # tous les jours a 10h
+    start_date=pendulum.datetime(2024, 1, 1, tz="Europe/Paris"),
+    schedule="30 17 * * *",  # tous les jours a 17h30 (Europe/Paris)
     catchup=False,
     tags=["classification", "predictions"],
 ) as dag:
