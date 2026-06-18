@@ -131,6 +131,11 @@ tab_landing, tab_predict, tab_perf = st.tabs(
 # --- Onglet 1 : landing / problematique -----------------------------------
 with tab_landing:
     st.markdown(
+        "<h1 style='text-align:center; font-size:3em; margin-top:0.5em;'>"
+        "Abdellatif ZIDANE</h1>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
         """
         ### Probleme metier
 
