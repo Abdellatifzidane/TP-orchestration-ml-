@@ -13,12 +13,14 @@ Lancement :
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import joblib
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -158,3 +160,46 @@ def predict(applicant: Applicant, model: str = DEFAULT_MODEL) -> PredictionOut:
 def model_info() -> dict:
     """Retourne la version servie (variable d'environnement MODEL_VERSION)."""
     return {"version": os.environ.get("MODEL_VERSION", "unknown")}
+
+
+@app.get("/models/metrics")
+def models_metrics() -> dict:
+    """Retourne les metriques par modele issues du dernier entrainement."""
+    path = MODEL_DIR / "metrics.json"
+    if not path.exists():
+        return {"models": [], "best": None}
+    try:
+        return json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=500, detail=f"metrics.json illisible : {exc}")  # noqa: B904
+
+
+@app.get("/models/{name}/feature-importance")
+def feature_importance(name: str, top: int = 15) -> dict:
+    """Retourne les importances de features du modele si disponibles."""
+    models = ml.get("models", {})
+    pipe = models.get(name)
+    if pipe is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Modele '{name}' introuvable (disponibles : {sorted(models.keys())})",
+        )
+    clf = pipe.named_steps.get("clf") if hasattr(pipe, "named_steps") else None
+    if clf is None or not hasattr(clf, "feature_importances_"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Modele '{name}' ne supporte pas feature_importances_",
+        )
+    pre = pipe.named_steps.get("preprocessor")
+    try:
+        names = list(pre.named_steps["columns"].get_feature_names_out())
+    except Exception:  # noqa: BLE001
+        names = [f"f{i}" for i in range(len(clf.feature_importances_))]
+    importances = np.asarray(clf.feature_importances_, dtype=float)
+    order = np.argsort(importances)[::-1][:top]
+    return {
+        "model": name,
+        "features": [
+            {"feature": names[i], "importance": float(importances[i])} for i in order
+        ],
+    }

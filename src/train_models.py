@@ -18,6 +18,7 @@ Lancement :
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import warnings
 from dataclasses import dataclass
@@ -260,6 +261,26 @@ def train_all(
         path = config.MODEL_DIR / f"{result.name}.joblib"
         joblib.dump(result.best_estimator, path)
         logger.info("Modele '%s' sauvegarde dans %s", result.name, path)
+
+    # Persiste les metriques pour le frontend (un fichier unique, lu par l'API).
+    metrics_payload = {
+        "best": best.name,
+        "scoring": scoring,
+        "cv": cv,
+        "models": [
+            {
+                "name": r.name,
+                "cv_score": r.cv_score,
+                "f1": r.f1,
+                "roc_auc": r.roc_auc,
+                "best_params": r.best_params,
+            }
+            for r in results
+        ],
+    }
+    metrics_path = config.MODEL_DIR / "metrics.json"
+    metrics_path.write_text(json.dumps(metrics_payload, indent=2))
+    logger.info("Metriques sauvegardees dans %s", metrics_path)
 
     return results
 
